@@ -124,9 +124,7 @@ public class JsonLoader extends LoadFunc {
             String errMsg = "Error while reading input - Very big number exceeds the scale of long: " + line;
             throw new ExecException(errMsg, errCode, PigException.REMOTE_ENVIRONMENT, e);
         } catch (JsonParseException e) {
-            int errCode = 6018;
-            String errMsg = "Error while reading input - Could not json-decode string: " + line;
-            throw new ExecException(errMsg, errCode, PigException.REMOTE_ENVIRONMENT, e);
+            return tupleFactory.newTuple(0); // JSON parsing errors yield empty tuple
         }
     }
 
