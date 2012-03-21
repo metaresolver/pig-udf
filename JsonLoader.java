@@ -38,6 +38,7 @@ import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ArrayNode;
 import org.codehaus.jackson.node.ObjectNode;
+import org.codehaus.jackson.JsonParser;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -82,6 +83,7 @@ public class JsonLoader extends LoadFunc {
     public JsonLoader() {
         super();
         mapper = new ObjectMapper();
+        mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
     }
 
     @SuppressWarnings("unchecked")
