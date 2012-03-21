@@ -116,7 +116,7 @@ public class JsonLoader extends LoadFunc {
         try {
             Map<String, Object> values = new HashMap<String, Object>();
             JsonNode node = mapper.readTree(line);
-            System.out.println(mapper.readTree(line));
+            //System.out.println(mapper.readTree(line));
             flatten_value(node, values);
             return tupleFactory.newTuple(values);
         } catch (NumberFormatException e) {
@@ -135,7 +135,7 @@ public class JsonLoader extends LoadFunc {
             String key = keys.next();
             JsonNode value = nodes.next();
 
-            System.out.println(key + ":" + value.toString());
+            //System.out.println(key + ":" + value.toString());
             if (value.isArray()) {
                 ArrayNode array = (ArrayNode) value;
                 DataBag bag = DefaultBagFactory.getInstance().newDefaultBag();
