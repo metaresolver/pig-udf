@@ -1,4 +1,4 @@
-package com.meta.pig;
+package com.meta.pigudf;
 
 import java.io.IOException;
 

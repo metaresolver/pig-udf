@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.pig.piggybank.storage;
+package com.meta.pigudf;
 
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.InputFormat;
