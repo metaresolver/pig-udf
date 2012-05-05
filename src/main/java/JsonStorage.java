@@ -145,11 +145,21 @@ public class JsonStorage extends StoreFunc implements StoreMetadata {
 
         // Write the beginning of the top level tuple object
         json.writeStartObject();
-
         ResourceFieldSchema[] fields = schema.getFields();
-        for (int i = 0; i < fields.length; i++) {
-            writeField(json, fields[i], t.get(i));
-        }
+
+	// if Tuple contains a single map, then just output the map as a top
+	// level JSON object without the { "map_0":{ .... } } wrapper.
+	if (fields.length == 1 &&
+	    fields[0] != null &&
+	    fields[0].getType() == DataType.MAP) {
+            for (Map.Entry<String, Object> e : ((Map<String, Object>)t.get(0)).entrySet()) {
+                json.writeStringField(e.getKey(), e.getValue().toString());
+            }
+	} else {
+	    for (int i = 0; i < fields.length; i++) {
+		writeField(json, fields[i], t.get(i));
+	    }
+	}
         json.writeEndObject();
         json.close();
 
