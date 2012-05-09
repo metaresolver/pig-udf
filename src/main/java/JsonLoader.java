@@ -38,6 +38,7 @@ import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ArrayNode;
 import org.codehaus.jackson.node.ObjectNode;
+import org.codehaus.jackson.node.ValueNode;
 import org.codehaus.jackson.JsonParser;
 
 import java.io.IOException;
@@ -92,33 +93,27 @@ public class JsonLoader extends LoadFunc {
         return new PigTextInputFormat();
     }
 
+    /**
+     * Only return null if there is no more input in this file!
+     */
     @Override
     public Tuple getNext() throws IOException {
-        boolean notDone = in.nextKeyValue();
-        if (!notDone) {
-            return null;
-        }
-        Text val = in.getCurrentValue();
-        if (val == null) {
-            return null;
-        }
-        String line = val.toString();
-        if (line.length() > 0) {
-            Tuple t = parseStringToTuple(line);
-            if (t != null) {
-                return t;
-            }
-        }
-        return null;
+	if (in.nextKeyValue()) {
+	    Text val = in.getCurrentValue();
+	    if (val != null) {
+		return parseStringToTuple(val.toString());
+	    }
+	}
+	return null;
     }
 
     protected Tuple parseStringToTuple(String line) throws IOException {
+	if (null == line || line.length() == 0 || line.charAt(0) != '{') {
+	    return tupleFactory.newTuple(0);
+	}
+
         try {
-            Map<String, Object> values = new HashMap<String, Object>();
-            JsonNode node = mapper.readTree(line);
-            //System.out.println(mapper.readTree(line));
-            flatten_value(node, values);
-            return tupleFactory.newTuple(values);
+            return tupleFactory.newTuple(walkObject(mapper.readTree(line)));
         } catch (NumberFormatException e) {
             int errCode = 6018;
             String errMsg = "Error while reading input - Very big number exceeds the scale of long: " + line;
@@ -128,48 +123,49 @@ public class JsonLoader extends LoadFunc {
         }
     }
 
-    private void flatten_value(JsonNode node, Map<String, Object> values) {
+    /**
+     * Walks the given JsonObject,
+     */
+    private Map<String,Object> walkObject(JsonNode node) {
+	Map<String,Object> values = new HashMap<String, Object>();
+
         Iterator<String> keys = node.getFieldNames();
         Iterator<JsonNode> nodes = node.getElements();
         while (keys.hasNext()) {
             String key = keys.next();
             JsonNode value = nodes.next();
 
-            //System.out.println(key + ":" + value.toString());
             if (value.isArray()) {
-                ArrayNode array = (ArrayNode) value;
-                DataBag bag = DefaultBagFactory.getInstance().newDefaultBag();
-                for (JsonNode innervalue : array) {
-                    flatten_array(innervalue, bag);
-                }
-                values.put(key, bag);
+		values.put(key, walkArray(value));
             } else if (value.isObject()) {
-                Map<String, Object> values2 = new HashMap<String, Object>();
-                flatten_value((ObjectNode) value, values2);
-                values.put(key, tupleFactory.newTuple(values2));
-            } else {
-                values.put(key, value != null ? value.toString().replaceAll("[\"]", "") : null);
+		values.put(key,tupleFactory.newTuple(walkObject(value)));
+            } else if (value.isNull()) {
+		values.put(key, null);
+	    } else if (value.isValueNode()) {
+		values.put(key, value.getValueAsText());
             }
         }
+	return values;
     }
 
-    private void flatten_array(JsonNode value, DataBag bag) {
-        if(value.isArray()) {
-            ArrayNode array = (ArrayNode)value;
-            DataBag b = DefaultBagFactory.getInstance().newDefaultBag();
-            for(JsonNode innervalue :array) {
-                flatten_array(innervalue, b);
-            }
-            bag.addAll(b);
-        } else if (value.isObject()){
-            Map<String, Object> values2 = new HashMap<String, Object>();
-            flatten_value((ObjectNode)value, values2);
-            bag.add(tupleFactory.newTuple(values2));
-        } else {
-            if(value !=null) {
-                bag.add( tupleFactory.newTuple(value));
-            }
-        }
+    /**
+     * Walks the given JsonArray, adding contents to the given DataBag
+     */
+    private DataBag walkArray(JsonNode arr) {
+	DataBag bag = DefaultBagFactory.getInstance().newDefaultBag();
+	for (JsonNode value : arr) {
+	    if (value.isArray()) {
+		bag.addAll(walkArray(value));
+	    } else if (value.isObject()){
+		bag.add(tupleFactory.newTuple(walkObject(value)));
+	    } else if (value.isValueNode() && ! value.isNull()) {
+		String s = value.getValueAsText();
+		if (s != null) { // mot sure this is necessary, just conservative
+		    bag.add( tupleFactory.newTuple(s) );
+		}
+	    }
+	}
+	return bag;
     }
 
     @SuppressWarnings("unchecked")
