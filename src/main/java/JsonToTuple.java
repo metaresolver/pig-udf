@@ -37,18 +37,36 @@ import org.codehaus.jackson.JsonParser;
  * Arguments: jsonString, fieldName1 ... fieldNameN
  * Output: Tuple(fieldValue1 ... fieldValueN)
  *
- * Note: Will output the FIRST matching field, if the field name appears
- * multiple times.
+ * If the fieldName does contain a ., then it will output the FIRST matching
+ * field, if the field appears multiple times or in a child node.
  *
- * Example:
+ * If the field contains a ., then it is considered a path, and it must
+ * be in the specified location (ex: logdata.ip )
+ *
+ * You can specify the root JSON node by prefixing the field name with a .
+ *
+ * If the field is a 0, then the first element of an array is used for that
+ * portion of the path (ex: employeeList.0.name ). Other indexes are
+ * currently not supported.
+ *
+
+Example with search style field names:
 
 REGISTER pig-udf.jar;
-DEFINE JsonToTuple com.meta.pig.JsonToTuple();
+DEFINE JsonToTuple com.meta.pigudf.JsonToTuple();
 
 a = load 'moo' as (l:chararray);
 b = foreach a generate JsonToTuple($0,'date','ip','ua');
 dump b;
 ((date, ip, ua))
+
+Example with explicit field paths:
+b = foreach a generate JsonToTuple($0,'.date','client.ip','client.ua');
+
+Example with flattening the tuple:
+b = foreach a generate
+    flatten(JsonToTuple($0,'.date','customer.0.name','client.0.age'))
+    as (date, name, age);
 
  */
 @SuppressWarnings("rawtypes")
@@ -82,13 +100,32 @@ public class JsonToTuple extends EvalFunc<Tuple> {
 
         try {
             String line = (String) input.get(0);
-            JsonNode node = mapper.readTree(line);
+            JsonNode rootNode = mapper.readTree(line);
 
             for (int i=1; i < input.size(); i++) {
                 String field = (String) input.get(i);
-                JsonNode value = node.findValue(field);
-                if (value != null) {
-                    output.set(i-1,value.getValueAsText());
+				JsonNode currentNode = rootNode;
+				if (field.contains(".")) {
+					for (String f : field.split("\\.")) {
+						// allow ".rootField" paths to explicitly fetch from
+						// root and not search entire tree for field name
+						if (!f.isEmpty()) {
+							// TODO, replace this 0 hack with a fancier array
+							// index path follower. But for now we alwyas want
+							// the first element anyways.
+							if (f == "0") currentNode = currentNode.path(0);
+							else currentNode = currentNode.path(f);
+
+							if (currentNode.isMissingNode()) break;
+						}
+					}
+				} else {
+					// if no . in path, search entire tree for first match
+					currentNode = rootNode.findPath(field);
+				}
+
+                if (!currentNode.isMissingNode()) {
+                    output.set(i-1,currentNode.getValueAsText());
                 }
             }
         } catch (JsonProcessingException e) {
