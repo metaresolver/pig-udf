@@ -1,5 +1,7 @@
 Pig UDFs
 
+See source comments for usage.
+
 To setup a development environment:
 
 Install Simple Built Tool (SBT):
@@ -13,10 +15,11 @@ chmod u+x ~/bin/sbt
 ---
 
 Compile: sbt compile
-Package to a JAR: sbt package
+Package to a JAR: sbt assembly
 Add ~ to any command to make a task run whenever a source file is changed.
 
 ** If there are any dependency errors, try the 'magic fix' of: rm -rf ~/.ivy2
    If the web dependencies get too annoying, we can also just put pig.jar
    in lib/ and be done with it.
+
 
