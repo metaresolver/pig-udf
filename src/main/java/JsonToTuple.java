@@ -45,9 +45,8 @@ import org.codehaus.jackson.JsonParser;
  *
  * You can specify the root JSON node by prefixing the field name with a .
  *
- * If the field is a 0, then the first element of an array is used for that
- * portion of the path (ex: employeeList.0.name ). Other indexes are
- * currently not supported.
+ * If an array is encountered, it automatically uses the first element of the
+ * array.
  *
 
 Example with search style field names:
@@ -65,7 +64,7 @@ b = foreach a generate JsonToTuple($0,'.date','client.ip','client.ua');
 
 Example with flattening the tuple:
 b = foreach a generate
-    flatten(JsonToTuple($0,'.date','customer.0.name','client.0.age'))
+    flatten(JsonToTuple($0,'.date','customer.name','client.age'))
     as (date, name, age);
 
  */
@@ -110,13 +109,14 @@ public class JsonToTuple extends EvalFunc<Tuple> {
 						// allow ".rootField" paths to explicitly fetch from
 						// root and not search entire tree for field name
 						if (!f.isEmpty()) {
-							// TODO, replace this 0 hack with a fancier array
+							// TODO, replace this hack with a fancier array
 							// index path follower. But for now we alwyas want
 							// the first element anyways.
-							if (f == "0") currentNode = currentNode.path(0);
-							else currentNode = currentNode.path(f);
+						    currentNode = currentNode.path(f);
+						    if (currentNode.isArray())
+							currentNode = currentNode.path(0);
 
-							if (currentNode.isMissingNode()) break;
+						    if (currentNode.isMissingNode()) break;
 						}
 					}
 				} else {
