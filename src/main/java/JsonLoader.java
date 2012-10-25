@@ -108,7 +108,9 @@ public class JsonLoader extends LoadFunc {
     }
 
     protected Tuple parseStringToTuple(String line) throws IOException {
-        if (null == line || line.length() == 0 || line.charAt(0) != '{') {
+        if (null == line || line.length() == 0 || line.charAt(0) != '{' ||
+            unequalCount(line,'{','}') ||
+            unequalCount(line,'[',']')) {
             return tupleFactory.newTuple(0);
         }
 
@@ -177,5 +179,34 @@ public class JsonLoader extends LoadFunc {
     @Override
     public void setLocation(String location, Job job) throws IOException {
         PigFileInputFormat.setInputPaths(job, location);
+    }
+
+    /**
+     * Quick hack to detect some cases of bad JSON -- Jackson appears to ignore
+     * some cases of bad JSON (with unbalanced {}'s or []'s), so instead of a
+     * Map the line is being parsed as a String, which causes a cast in the Pig
+     * script to fail.
+     */
+    private boolean unequalCount(String search, char a, char b) {
+        int countA = 0;
+        int countB = 0;
+        boolean insideField = false;
+        for (int i = 0; i < search.length(); i++) {
+            final char c = search.charAt(i);
+            if (insideField) {
+                if (c == '"') {
+                    if (i > 0 &&
+                        search.charAt(i-1) != '\\') {
+                        insideField = false;
+                    } else {
+                        insideField = true;
+                    }
+                }
+            } else {
+                if (c == a) countA++;
+                else if (c == b) countB++;
+            }
+        }
+        return countA != countB;
     }
 }
