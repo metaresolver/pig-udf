@@ -191,21 +191,15 @@ public class JsonLoader extends LoadFunc {
         int countA = 0;
         int countB = 0;
         boolean insideField = false;
+        boolean insideEscape = false;
         for (int i = 0; i < search.length(); i++) {
             final char c = search.charAt(i);
-            if (insideField) {
-                if (c == '"') {
-                    if (i > 0 &&
-                        search.charAt(i-1) != '\\') {
-                        insideField = false;
-                    } else {
-                        insideField = true;
-                    }
-                }
-            } else {
-                if (c == a) countA++;
-                else if (c == b) countB++;
-            }
+            if (insideEscape) insideEscape = false;
+            else if (insideField && c == '\\') insideEscape = true;
+            else if (insideField && c == '"')  insideField = false;
+            else if (c == '"') insideField = true;
+            else if (c == a) countA++;
+            else if (c == b) countB++;
         }
         return countA != countB;
     }
