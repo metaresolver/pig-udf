@@ -98,19 +98,19 @@ public class JsonLoader extends LoadFunc {
      */
     @Override
     public Tuple getNext() throws IOException {
-	if (in.nextKeyValue()) {
-	    Text val = in.getCurrentValue();
-	    if (val != null) {
-		return parseStringToTuple(val.toString());
-	    }
-	}
-	return null;
+        if (in.nextKeyValue()) {
+            Text val = in.getCurrentValue();
+            if (val != null) {
+                return parseStringToTuple(val.toString());
+            }
+        }
+        return null;
     }
 
     protected Tuple parseStringToTuple(String line) throws IOException {
-	if (null == line || line.length() == 0 || line.charAt(0) != '{') {
-	    return tupleFactory.newTuple(0);
-	}
+        if (null == line || line.length() == 0 || line.charAt(0) != '{') {
+            return tupleFactory.newTuple(0);
+        }
 
         try {
             return tupleFactory.newTuple(walkObject(mapper.readTree(line)));
@@ -127,7 +127,7 @@ public class JsonLoader extends LoadFunc {
      * Walks the given JsonObject,
      */
     private Map<String,Object> walkObject(JsonNode node) {
-	Map<String,Object> values = new HashMap<String, Object>();
+        Map<String,Object> values = new HashMap<String, Object>();
 
         Iterator<String> keys = node.getFieldNames();
         Iterator<JsonNode> nodes = node.getElements();
@@ -136,36 +136,36 @@ public class JsonLoader extends LoadFunc {
             JsonNode value = nodes.next();
 
             if (value.isArray()) {
-		values.put(key, walkArray(value));
+                values.put(key, walkArray(value));
             } else if (value.isObject()) {
-		values.put(key,tupleFactory.newTuple(walkObject(value)));
+                values.put(key,tupleFactory.newTuple(walkObject(value)));
             } else if (value.isNull()) {
-		values.put(key, null);
-	    } else if (value.isValueNode()) {
-		values.put(key, value.getValueAsText());
+                values.put(key, null);
+            } else if (value.isValueNode()) {
+                values.put(key, value.getValueAsText());
             }
         }
-	return values;
+        return values;
     }
 
     /**
      * Walks the given JsonArray, adding contents to the given DataBag
      */
     private DataBag walkArray(JsonNode arr) {
-	DataBag bag = DefaultBagFactory.getInstance().newDefaultBag();
-	for (JsonNode value : arr) {
-	    if (value.isArray()) {
-		bag.addAll(walkArray(value));
-	    } else if (value.isObject()){
-		bag.add(tupleFactory.newTuple(walkObject(value)));
-	    } else if (value.isValueNode() && ! value.isNull()) {
-		String s = value.getValueAsText();
-		if (s != null) { // mot sure this is necessary, just conservative
-		    bag.add( tupleFactory.newTuple(s) );
-		}
-	    }
-	}
-	return bag;
+        DataBag bag = DefaultBagFactory.getInstance().newDefaultBag();
+        for (JsonNode value : arr) {
+            if (value.isArray()) {
+                bag.addAll(walkArray(value));
+            } else if (value.isObject()){
+                bag.add(tupleFactory.newTuple(walkObject(value)));
+            } else if (value.isValueNode() && ! value.isNull()) {
+                String s = value.getValueAsText();
+                if (s != null) { // mot sure this is necessary, just conservative
+                    bag.add( tupleFactory.newTuple(s) );
+                }
+            }
+        }
+        return bag;
     }
 
     @SuppressWarnings("unchecked")
